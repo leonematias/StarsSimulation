@@ -4,13 +4,21 @@ import java.awt.BorderLayout;
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Label;
 import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Random;
+import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.UIManager;
 
 /**
@@ -28,6 +36,9 @@ public class UI {
     private BufferedImage renderImg;
     private Graphics2D renderG;
     private Dimension graphDim;
+    JTextField gTextField;
+    JTextField massTextField;
+    JTextField speedTextField;
     
     
     public static void main(String[] args) {
@@ -44,6 +55,34 @@ public class UI {
         renderPanel = new Canvas();
         frame.add(renderPanel, BorderLayout.CENTER);
  
+        JPanel controlsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        
+        gTextField = new JTextField(String.valueOf(G));
+        gTextField.setPreferredSize(new Dimension(200, 30));
+        controlsPanel.add(new Label("Gravity: "));
+        controlsPanel.add(gTextField);
+        
+        massTextField = new JTextField(String.valueOf(MAX_MASS));
+        massTextField.setPreferredSize(new Dimension(200, 30));
+        controlsPanel.add(new Label("Mass: "));
+        controlsPanel.add(massTextField);
+        
+        speedTextField = new JTextField(String.valueOf(MAX_SPEED));
+        speedTextField.setPreferredSize(new Dimension(200, 30));
+        controlsPanel.add(new Label("Velocity: "));
+        controlsPanel.add(speedTextField);
+        
+        JButton restartButton = new JButton("Restart");
+        restartButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                restartScene = true;
+            }
+        });
+        controlsPanel.add(restartButton);
+        
+        frame.add(controlsPanel, BorderLayout.NORTH);
+        frame.pack();
         
         Dimension screenDim = Toolkit.getDefaultToolkit().getScreenSize();
         frame.setLocation(screenDim.width / 2 - WIN_WIDTH / 2, screenDim.height / 2 - WIN_HEIGHT / 2);
@@ -90,14 +129,14 @@ public class UI {
             frameCount++;
             
             //Clean
-            renderG.setColor(Color.WHITE);
+            renderG.setColor(Color.BLACK);
             renderG.fillRect(0, 0, graphDim.width, graphDim.height);
             
             //Render
             render(renderG, elapsedTime);
             
             //Draw FPS
-            renderG.setColor(Color.BLACK);
+            renderG.setColor(Color.YELLOW);
             renderG.drawString("FPS: " + framesPerSecond, 10, 20);
             
             //Draw buffer
@@ -110,7 +149,13 @@ public class UI {
 
     
     private java.util.List<Particle> particles;
-    private static float G = 10;
+    private boolean restartScene = false;
+    private static float E = 0.1f;
+    
+    private float G = 10;
+    private float MAX_MASS = 1;
+    private float MAX_SPEED = 10;
+    
     
     
     /**
@@ -119,13 +164,33 @@ public class UI {
     private void init() {
         particles = new ArrayList<Particle>();
         
-        for (int i = 0; i < 10; i++) {
-            for (int j = 0; j < 10; j++) {
-                particles.add(new Particle(50 + i * 120, 50 + j * 60, 15, 30, j % 2 == 0 ? Color.BLUE : Color.RED));
-            }
-        }
+        restartScene();
+    }
+    
+    private void restartScene() {
+        restartScene = false;
         
-        particles.add(new Particle(500, 300, 30, 10000, Color.GREEN));
+        particles.clear();
+        G = Float.parseFloat(gTextField.getText());
+        MAX_MASS = Float.parseFloat(massTextField.getText());
+        MAX_SPEED = Float.parseFloat(speedTextField.getText());
+        
+        
+        Random rand = new Random();
+        int centerX = graphDim.width / 2;
+        int centerY = graphDim.height / 2;
+        float r = 3;
+        int minMass = 1;
+        for (int i = 0; i < 1000; i++) {
+            float mass = minMass + rand.nextInt((int)MAX_MASS);
+            Color color = rand.nextInt(10) < 7 ? Color.WHITE : Color.YELLOW;
+            Particle p = new Particle(centerX, centerY, r, mass, color);
+            p.velocity.set(
+                    rand.nextFloat() * MAX_SPEED * (rand.nextBoolean() ? 1 : -1),
+                    rand.nextFloat() * MAX_SPEED * (rand.nextBoolean() ? 1 : -1)
+                    );
+            particles.add(p);
+        }
     }
 
     
@@ -133,6 +198,9 @@ public class UI {
      * Main render method
      */
     private void render(Graphics2D g, float elapsedTime) {
+        if(restartScene) {
+            restartScene();
+        }
    
         for (Particle p : particles) {
             p.resetForce();
@@ -142,7 +210,7 @@ public class UI {
             Particle p1 = particles.get(i);
             for (int j = i + 1; j < particles.size(); j++) {
                 Particle p2 = particles.get(j);
-                Particle.updateForce(p1, p2, graphDim);
+                Particle.updateForce(G, p1, p2, graphDim);
             }
         }
         
@@ -181,8 +249,8 @@ public class UI {
             g.setColor(color);
             g.fillOval((int)(center.X - radius), (int)(center.Y - radius), (int)(radius * 2), (int)(radius * 2));
             
-            g.setColor(Color.BLACK);
-            g.drawOval((int)(center.X - radius), (int)(center.Y - radius), (int)(radius * 2), (int)(radius * 2));
+            //g.setColor(Color.BLACK);
+            //g.drawOval((int)(center.X - radius), (int)(center.Y - radius), (int)(radius * 2), (int)(radius * 2));
         }
         
         public void resetForce() {
@@ -196,7 +264,7 @@ public class UI {
         }
         
         
-        public static void updateForce(Particle p1, Particle p2, Dimension dim) {
+        public static void updateForce(float g, Particle p1, Particle p2, Dimension dim) {
             if(p1.isOutside(dim) || p2.isOutside(dim))
                 return;
             
@@ -204,11 +272,11 @@ public class UI {
             float dx = p2.center.X - p1.center.X;
             float dy = p2.center.Y - p1.center.Y;
             float rSq = dx * dx + dy * dy;
-            float r = (float)Math.sqrt(rSq);         
-           
+            float r = (float)(Math.max(Math.sqrt(rSq), E));                  
             
-            //F = G * m1 * m2 / r^2
-            float f = (G * p1.mass * p2.mass) / rSq;
+            
+            //F = G * m1 * m2 / (r^2 + e^2)
+            float f = (g * p1.mass * p2.mass) / (Math.max(rSq, E));
             
             //Fx = F * cos(a) = F * dx / r
             float fx = f * dx / r;
