@@ -191,11 +191,18 @@ public class UI {
         for (int i = 0; i < PARTICLES_COUNT; i++) {
             float mass = minMass + rand.nextInt((int)MAX_MASS);
             Color color = rand.nextInt(10) < 7 ? Color.WHITE : Color.YELLOW;
-            Particle p = new Particle(centerX, centerY, r, mass, color);
-            p.velocity.set(
-                    rand.nextFloat() * MAX_SPEED * (rand.nextBoolean() ? 1 : -1),
-                    rand.nextFloat() * MAX_SPEED * (rand.nextBoolean() ? 1 : -1)
-                    );
+            int dx = rand.nextInt(10) * (rand.nextBoolean() ? 1 : -1);
+            int dy = rand.nextInt(10) * (rand.nextBoolean() ? 1 : -1);
+            Particle p = new Particle(
+                    centerX + dx, 
+                    centerY + dy, 
+                    r, 
+                    mass, 
+                    color);
+            
+            float vx = rand.nextFloat() * MAX_SPEED * (rand.nextBoolean() ? 1 : -1);
+            float vy = rand.nextFloat() * MAX_SPEED * (rand.nextBoolean() ? 1 : -1);
+            p.velocity.set(vx, vy);
             particles.add(p);
         }
     }
