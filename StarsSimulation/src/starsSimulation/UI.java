@@ -36,9 +36,10 @@ public class UI {
     private BufferedImage renderImg;
     private Graphics2D renderG;
     private Dimension graphDim;
-    JTextField gTextField;
-    JTextField massTextField;
-    JTextField speedTextField;
+    private JTextField gTextField;
+    private JTextField massTextField;
+    private JTextField speedTextField;
+    private JTextField particlesTextField;
     
     
     public static void main(String[] args) {
@@ -71,6 +72,11 @@ public class UI {
         speedTextField.setPreferredSize(new Dimension(200, 30));
         controlsPanel.add(new Label("Velocity: "));
         controlsPanel.add(speedTextField);
+        
+        particlesTextField = new JTextField(String.valueOf(PARTICLES_COUNT));
+        particlesTextField.setPreferredSize(new Dimension(200, 30));
+        controlsPanel.add(new Label("Particles: "));
+        controlsPanel.add(particlesTextField);
         
         JButton restartButton = new JButton("Restart");
         restartButton.addActionListener(new ActionListener() {
@@ -151,10 +157,12 @@ public class UI {
     private java.util.List<Particle> particles;
     private boolean restartScene = false;
     private static float E = 0.1f;
+    private static float E2 = E * E;
     
     private float G = 10;
     private float MAX_MASS = 1;
-    private float MAX_SPEED = 10;
+    private float MAX_SPEED = 30;
+    private int PARTICLES_COUNT = 1000;
     
     
     
@@ -163,8 +171,6 @@ public class UI {
      */
     private void init() {
         particles = new ArrayList<Particle>();
-        
-        restartScene();
     }
     
     private void restartScene() {
@@ -174,6 +180,7 @@ public class UI {
         G = Float.parseFloat(gTextField.getText());
         MAX_MASS = Float.parseFloat(massTextField.getText());
         MAX_SPEED = Float.parseFloat(speedTextField.getText());
+        PARTICLES_COUNT = Integer.parseInt(particlesTextField.getText());
         
         
         Random rand = new Random();
@@ -181,7 +188,7 @@ public class UI {
         int centerY = graphDim.height / 2;
         float r = 3;
         int minMass = 1;
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < PARTICLES_COUNT; i++) {
             float mass = minMass + rand.nextInt((int)MAX_MASS);
             Color color = rand.nextInt(10) < 7 ? Color.WHITE : Color.YELLOW;
             Particle p = new Particle(centerX, centerY, r, mass, color);
@@ -200,22 +207,27 @@ public class UI {
     private void render(Graphics2D g, float elapsedTime) {
         if(restartScene) {
             restartScene();
+            elapsedTime = 0;
         }
    
         for (Particle p : particles) {
-            p.resetForce();
+            p.reset();
         }
         
-        for (int i = 0; i < particles.size() - 1; i++) {
+        for (int i = 0; i < particles.size(); i++) {
             Particle p1 = particles.get(i);
-            for (int j = i + 1; j < particles.size(); j++) {
+            for (int j = 0; j < particles.size(); j++) {
+                if(i == j)
+                    continue;
+                
                 Particle p2 = particles.get(j);
-                Particle.updateForce(G, p1, p2, graphDim);
+                p1.updateAccelation(p2, graphDim);
             }
+            
         }
         
         for (Particle p : particles) {
-            p.computePosition(elapsedTime);
+            p.computePosition(elapsedTime, G);
             p.render(g, graphDim);
          
         }
@@ -230,7 +242,7 @@ public class UI {
         private float radius;
         private float mass;
         private Color color;
-        private Vector2 force;
+        private Vector2 acceleration;
         private Vector2 velocity;
         
         public Particle(int x, int y, float r, float mass, Color color) {
@@ -238,8 +250,8 @@ public class UI {
             this.radius = r;
             this.mass = mass;
             this.color = color;
-            this.force = new Vector2();
             this.velocity = new Vector2();
+            this.acceleration = new Vector2();
         }
         
         public void render(Graphics2D g, Dimension dim) {
@@ -253,8 +265,8 @@ public class UI {
             //g.drawOval((int)(center.X - radius), (int)(center.Y - radius), (int)(radius * 2), (int)(radius * 2));
         }
         
-        public void resetForce() {
-            this.force.set(0, 0);
+        public void reset() {
+            this.acceleration.set(0, 0);
         }
         
         public boolean isOutside(Dimension dim) {
@@ -264,42 +276,28 @@ public class UI {
         }
         
         
-        public static void updateForce(float g, Particle p1, Particle p2, Dimension dim) {
-            if(p1.isOutside(dim) || p2.isOutside(dim))
-                return;
+        public void updateAccelation(Particle p2, Dimension dim) {
+            /*if(this.isOutside(dim) || p2.isOutside(dim))
+                return;   */   
             
+            float dx = p2.center.X - this.center.X;
+            float dy = p2.center.Y - this.center.Y;
+            float r2 = dx * dx + dy * dy;              
             
-            float dx = p2.center.X - p1.center.X;
-            float dy = p2.center.Y - p1.center.Y;
-            float rSq = dx * dx + dy * dy;
-            float r = (float)(Math.max(Math.sqrt(rSq), E));                  
+            float div = (float)Math.pow((r2 + E2), 3/2);
+            float ax = p2.mass * dx / div;
+            float ay = p2.mass * dy / div;
             
-            
-            //F = G * m1 * m2 / (r^2 + e^2)
-            float f = (g * p1.mass * p2.mass) / (Math.max(rSq, E));
-            
-            //Fx = F * cos(a) = F * dx / r
-            float fx = f * dx / r;
-            
-            //Fy = F * sin(a) = F * dy / r
-            float fy = f * dy / r;
-            
-            p1.force.X += fx;
-            p1.force.Y += fy;
-            
-            p2.force.X -= fx;
-            p2.force.Y -= fy;
-            
+            this.acceleration.X += ax;
+            this.acceleration.Y += ay;
         }
         
-        public void computePosition(float t) {
-            //F = m * a  =>  a = F / m
-            float ax = force.X / mass;
-            float ay = force.Y / mass;
+        public void computePosition(float t, float g) {
+            this.acceleration.mul(g);
             
             //V(t) = V(0) + a * t
-            velocity.X += ax * t;
-            velocity.Y += ay * t;
+            velocity.X += this.acceleration.X * t;
+            velocity.Y += this.acceleration.Y * t;
             
             //P(t) = P(0) + V(t)
             center.X += velocity.X * t;
