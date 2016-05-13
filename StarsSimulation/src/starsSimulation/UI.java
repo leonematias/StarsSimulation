@@ -159,10 +159,11 @@ public class UI {
     private static float E = 0.1f;
     private static float E2 = E * E;
     
-    private float G = 10;
-    private float MAX_MASS = 1;
-    private float MAX_SPEED = 30;
+    private float G = 4 * (float)(Math.PI * Math.PI);
+    private float MAX_MASS = 5;
+    private float MAX_SPEED = 1;
     private int PARTICLES_COUNT = 1000;
+    private int MAX_DISPERSION = 100;
     
     
     
@@ -191,8 +192,8 @@ public class UI {
         for (int i = 0; i < PARTICLES_COUNT; i++) {
             float mass = minMass + rand.nextInt((int)MAX_MASS);
             Color color = rand.nextInt(10) < 7 ? Color.WHITE : Color.YELLOW;
-            int dx = rand.nextInt(10) * (rand.nextBoolean() ? 1 : -1);
-            int dy = rand.nextInt(10) * (rand.nextBoolean() ? 1 : -1);
+            int dx = rand.nextInt(MAX_DISPERSION) * (rand.nextBoolean() ? 1 : -1);
+            int dy = rand.nextInt(MAX_DISPERSION) * (rand.nextBoolean() ? 1 : -1);
             Particle p = new Particle(
                     centerX + dx, 
                     centerY + dy, 
