@@ -156,8 +156,20 @@ public class UI {
     
     private java.util.List<Particle> particles;
     private boolean restartScene = false;
-    private static float E = 0.1f;
+    private static float E = 0.01f;
     private static float E2 = E * E;
+    private static Color[] COLORS = new Color[]{
+        Color.WHITE,
+        Color.WHITE,
+        Color.WHITE,
+        Color.WHITE,
+        Color.YELLOW,
+        Color.YELLOW,
+        Color.BLUE,
+        Color.MAGENTA,
+        Color.ORANGE,
+        Color.PINK
+    };
     
     private float G = 4 * (float)(Math.PI * Math.PI);
     private float MAX_MASS = 5;
@@ -191,7 +203,7 @@ public class UI {
         int minMass = 1;
         for (int i = 0; i < PARTICLES_COUNT; i++) {
             float mass = minMass + rand.nextInt((int)MAX_MASS);
-            Color color = rand.nextInt(10) < 7 ? Color.WHITE : Color.YELLOW;
+            Color color = COLORS[rand.nextInt(COLORS.length)];
             int dx = rand.nextInt(MAX_DISPERSION) * (rand.nextBoolean() ? 1 : -1);
             int dy = rand.nextInt(MAX_DISPERSION) * (rand.nextBoolean() ? 1 : -1);
             Particle p = new Particle(
